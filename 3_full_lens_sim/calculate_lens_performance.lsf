@@ -1,0 +1,163 @@
+#load("full_lens.fsp");
+#if (havedata("field")==false){
+    #run;
+#}
+mon_name="trans_1";
+f=getdata(mon_name,"f");
+T1=transmission(mon_name);
+print("normalized power through surface near the metalens (using direct transmission): "+ num2str(T1));
+
+# second way to calculate power through a surface - transmission
+x=getdata(mon_name,"x");
+y=getdata(mon_name,"y");
+f=getdata(mon_name,"f");
+Pz=getdata(mon_name,"Pz");
+Pz=pinch(real(Pz));
+
+T2 = 0.5*integrate(Pz,1:2,x,y);  # power in watts
+T2 = T2/sourcepower(f);
+print("normalized power through surface near the metalens (by using Poynting vector): "+ num2str(T2));
+#===========================================================
+# calculate power flux through a part of a surface
+#==========================================================
+## a circular region
+#x_center=0e-9;	# integration range in m, set by user
+#y_center=0;
+#radius= 2*1e-6;
+#X=meshgridx(x,y);
+#Y=meshgridy(x,y);
+
+#filter = (radius)>=sqrt((X-x_center)^2+(Y-y_center)^2);
+
+## integrate Pz over the filter region
+#T_filtered = 0.5* integrate(Pz*filter,1:2,x,y);
+#T_filtered = T_filtered/sourcepower(f);
+
+#print("On the same plane, power through a circle:"+ num2str(T_filtered));
+
+#==========================================================
+
+#mon_name="trans_2";
+#f=getdata(mon_name,"f");
+
+## second way to calculate power through a surface - transmission
+#x=getdata(mon_name,"x");
+#y=getdata(mon_name,"y");
+#f=getdata(mon_name,"f");
+#Pz=getdata(mon_name,"Pz");
+#Pz=pinch(real(Pz));
+
+#T_far_direct = 0.5*integrate(Pz,1:2,x,y);  # power in watts
+#norm_T_far_direct = T_far_direct/sourcepower(f);
+#print("normalized power through surface at 5*wavelength (by using Poynting vector): "+ num2str(norm_T_far_direct));
+
+#===============================================
+
+## choose the half angle over which we will integrate
+#half_angle = 30; #in degrees
+## choose the central angle of the cone
+#cone_center_theta = 0;
+#cone_center_phi = 0;
+
+#E2 = farfield3d("trans_2"); # this returns |E|^2 in the far field
+#ux = farfieldux("trans_2");
+#uy = farfielduy("trans_2");
+
+## Method2
+## calculate and integrate the Poynting vector
+#temp2=0.5*sqrt(eps0/mu0)*farfield3dintegrate(E2,ux,uy,half_angle,cone_center_theta,cone_center_phi);
+## apply source normalization 
+#T_far_field=temp2/sourcepower(getdata("trans_2","f"));
+
+#print("normalized transmission farfield: "+ num2str(T_far_field));
+## now compare this power flux with farfield method
+
+#--------------------------------------------------
+# calculate power same power using motor trans_1 and 
+# far field projection  
+#--------------------------------------------------
+# get focal length and the radius from the simulation
+R = getnamed("metalens","lens radius");
+TargetFocalLength = getnamed("metalens","focal length");
+
+# choose area to plot and spatial resolution
+x = linspace(-R,R,200);
+y = linspace(-R,R,200);
+z = linspace(1e-6,1.5*TargetFocalLength,100);
+
+
+#farfieldsettings("override near field mesh",true);
+#farfieldsettings("near field samples per wavelength",2); # at Nyquist limit
+
+## choose area to plot and spatial resolution
+#x = linspace(-R+ 1e-6,R+ 1e-6,400);
+#y = linspace(-R+ 1e-6,R+ 1e-6,100);
+#z = linspace(2e-6,200e-6,400);
+
+# get the focal length 
+E2_z = farfieldexact3d('trans_1',0,0,z);
+E2_z = pinch(sum(abs(E2_z)^2,4));
+
+ind = find(E2_z,max(E2_z));
+zm = z(ind);
+SimulationFocalLength= zm;
+#---------------------------------------------------
+frequency= getresult("trans_1","f");
+wavelength= c/frequency;
+
+EFocal = farfieldexact3d('field', x, y, z= zm, {"field":"E"});
+
+Ex_Focal = pinch(EFocal, 4, 1);
+Ey_Focal = pinch(EFocal, 4, 2);
+Ez_Focal = pinch(EFocal, 4, 3);
+I_Focal = abs(Ex_Focal)^2 + abs(Ey_Focal)^2 ;
+
+
+#image(x*1e6,y*1e6,I_Focal,"x (mm)","y (mm)","Electric field at focal length "); 
+
+x_center= 0e-6;
+y_center= 0e-6;
+
+
+
+power_total = 0.5*sqrt(eps0/mu0)*integrate(I_Focal, 1:2, x, y);
+#print("total power at focal plane: "+ num2str(power_total/sourcepower(f)));
+#---------------------------------------------------
+##------------------------------------------
+## Find Full Width Half Maximum (FWHM) 
+##------------------------------------------
+E2_x = farfieldexact3d('trans_1',x,0,z= zm);
+
+
+##farfield in x diirection at the focal point (x=0,y=0,z=zm)
+Intensity_x = pinch(sum(abs(E2_x)^2,4));
+#plot(x*1e6,Intensity_x,'x (um)','|E|^2 (V^2/m^2)','Farfield at focal plane','linewidth=2');
+#legend("");
+
+p= fitnormpdf(x,Intensity_x);
+FWHM= 2 * sqrt(2* log(2))* p(3);
+#----------------------------
+FocalSpotRadius = FWHM*2 ;
+
+X = meshgridx(x,y);
+Y = meshgridy(x,y);
+#----------------------------
+filter = (FocalSpotRadius)>=sqrt((X-x_center)^2+(Y-y_center)^2);
+I_Focal_filtered =filter*pinch(I_Focal);
+#----------------------------
+Power_FocalSpot= 0.5*sqrt(eps0/mu0)*integrate(I_Focal_filtered, 1:2, x, y);
+Power_FocalSpot= Power_FocalSpot/sourcepower(f);
+#print("normalized power at focal spot: "+ num2str(Power_FocalSpot));
+#----------------------------
+FocusingEff = Power_FocalSpot/T1;
+#print("focusing efficiency in percent: "+ num2str(FocusingEff* 100));
+
+print("-------------------------");
+print("FWHM: "+ num2str(FWHM* 1e6));
+print("FOCAL: "+ num2str(zm* 1e6));
+print("EFF: "+ num2str(Power_FocalSpot* 100));
+print("TRANS: "+ num2str(T1* 100));
+print("FOCUSING EFF: "+ num2str(FocusingEff* 100));
+print("-------------------------");
+
+
