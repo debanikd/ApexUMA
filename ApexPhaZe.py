@@ -66,6 +66,14 @@ class  PhaseDesign:
                 self.phase_zemax.append(phase)
 
         self.x_zemax= self.x_zemax= np.array([i* 1e3 for i in self.x_zemax]) # make sure that zemax dimension is in mm
+        # #print(x_mask)
+        # if Optimize == 0:
+        #     phase_target = -np.mod((2*np.pi/self.Wavelength)*(np.sqrt(x_mask**2+FocalLength**2)-FocalLength),2*np.pi) # Hyperbolic lens is assumed with mod 2pi phase target
+        #     phase_target  = phase_target  - min(phase_target )
+        # elif Optimize == 1:
+        #     phase_target= utility.create_phase_target(phase_zemax, x_zemax, x_mask)
+
+        # phase_target= np.mod(phase_target, 2* np.pi)
         return self.x_zemax, self.phase_zemax
    
     def compare_optimized_ideal(self):
@@ -118,12 +126,12 @@ class  UnitCellDesign:
         simple_library.calculate(numBasis=125)
         phase, transmission, reflection = simple_library.getResults()
         if show_plot:
-            plt.plot(self.diameter,phase, color= 'darkred', linewidth = 2.5)
+            plt.plot(self.diameter/2,phase, color= 'darkred', linewidth = 2.5)
             plt.xlabel("Radius (μm)", fontdict={'size': 18})
             plt.ylabel("Phase (Radian)", fontdict={'size': 18})
             plt.title('Unit Cell Libray: Diameter vs Phase', fontdict={'size': 18})
             plt.show()
-        return self.diameter, phase, transmission
+        return self.diameter/2, phase, transmission
 
         # print("Results for Simple Circle Atom")
         # print(f"\tPhase: {phase}")
@@ -137,7 +145,51 @@ class  UnitCellDesign:
     # print("Atom parameters:")
     # for key, value in params.items():
     #     print("\t",key,"\t",value)
-# class  LensDesign(PhaseDesign):
-#     def __init__(self, use_ideal_phase= False):
-#         print()
+class  LensDesign:
+    def __init__(self, phase_zemax, radius_zemax, phase_unitcell, radius_unitcell, idealphase= False):
+
+        self.radius_zemax= radius_zemax
+        self.phase_zemax= phase_zemax 
+
+        self.radius_unitcell= radius_unitcell
+        self.phase_unitcell= phase_unitcell
+
+
+        self.LensDiameter = LensConfig["LensDiameter"]
+        self.Wavelength = LensConfig["Wavelength"]
+        self.FocalLength = LensConfig["FocalLength"]
+        self.RadiusMin = LensConfig["UnitCell"]["Radius"][0]
+        self.RadiusMax= LensConfig["UnitCell"]["Radius"][1]
+        self.Pitch= LensConfig["UnitCell"]["Period"]
+        self.Height= LensConfig["UnitCell"]["Height"]
+        self.NumAtom= LensConfig["UnitCell"]["NumAtom"]
+        self.SubstrateIndex= LensConfig["SubstrateIndex"]
+        self.PillarIndex= LensConfig["PillarIndex"]
+        self.LensRadius= self.LensDiameter/2 
+
+        # this file was written to visualize the meta-atom placement 
+        FullLensNumMetaAtomRow = round(self.LensRadius/self.Pitch)
+
+        x_mask = self.Pitch* np.arange(-FullLensNumMetaAtomRow, FullLensNumMetaAtomRow+1)
+        y_mask = self.Pitch* np.arange(-FullLensNumMetaAtomRow, FullLensNumMetaAtomRow+1)
+        
+
+        #print(x_mask)
+        if idealphase:
+            phase_target = -np.mod((2*np.pi/self.Wavelength)*(np.sqrt(x_mask**2+self.FocalLength**2)-self.FocalLength),2*np.pi) # Hyperbolic lens is assumed with mod 2pi phase target
+            phase_target  = phase_target  - min(phase_target )
+        else:
+            phase_target= utility.create_phase_target(phase_zemax, self.radius_zemax, x_mask)
+
+      
+
+        phase_target= np.mod(phase_target, 2* np.pi)
+
+        #===========================
+        plt.scatter(x_mask,phase_target, color = 'darkblue', linewidth= 2.5)
+        plt.ylabel('Phase (rad)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
+        plt.xlabel('Radius (μm)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
+        plt.title('Phase target')
+        plt.show()
+        # ===========================
 
