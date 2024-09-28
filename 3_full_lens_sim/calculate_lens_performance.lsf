@@ -1,4 +1,4 @@
-#load("full_lens.fsp");
+#load("../full_lens.fsp");
 #if (havedata("field")==false){
     #run;
 #}
