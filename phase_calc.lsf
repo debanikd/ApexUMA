@@ -1,0 +1,21 @@
+load("lumerical_full_lens_test");
+############################
+R = 10e-6;
+fl = 100e-6;
+E = getresult("transmission","E");
+x = E.x;
+y = E.y;
+ind = find(x,[-R,R]); # limit the x range for plot
+ind = ind(1):ind(2);
+x = x(ind);
+phase = angle(pinch(E.Ex));
+phase_x = pinch(phase,2,find(y,0));
+phase_x = phase_x(ind);
+phase_x = phase_x-min(phase_x);
+phase_target = 2*pi/ E.lambda*(fl-sqrt(x^2+fl^2)); # Hyperbolic lens is assumed
+phase_target = phase_target-min(phase_target);
+plot(x*1e6,mod(unwrap(phase_x),2*pi),phase_target,"x (um)","Phase (rad)","","linewidth=2");
+setplot("x max",R*1e6); setplot("x min",-R*1e6);
+legend("Simulation","Target");
+
+##################

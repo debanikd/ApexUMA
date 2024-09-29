@@ -94,7 +94,6 @@ class  PhaseDesign:
    
     def compare_optimized_ideal(self):
         phase_hyperbolic = -(2*np.pi/self.Wavelength)*(np.sqrt(self.x_zemax**2+self.FocalLength**2)-self.FocalLength) # Hyperbolic lens is assumed with mod 2pi phase target
-        #phase_hyperbolic= -np.mod(phase_hyperbolic, 2* np.pi)
         phase_hyperbolic= phase_hyperbolic- min(phase_hyperbolic)
 
 
@@ -199,7 +198,8 @@ class  LensDesign:
 
 
         phase_target= np.mod(phase_target, 2* np.pi)
-    
+        
+
         # #===========================
         # plt.scatter(x_mask,phase_target, color = 'darkblue', linewidth= 2.5)
         # plt.ylabel('Phase (rad)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
@@ -210,8 +210,11 @@ class  LensDesign:
     
         # Step 3: Obtain the radius vs. position yielding the desired phase profile    
         # Create the interpolation function (linear by default)
-        interp_func = sp.interpolate.interp1d(self.phase_unitcell- self.phase_unitcell[0], self.radius_unitcell, kind='cubic')
+        self.phase_unitcell_unwrapped= np.unwrap(self.phase_unitcell)
+        self.phase_unitcell_unwrapped= self.phase_unitcell_unwrapped- self.phase_unitcell_unwrapped[0]
 
+        interp_func = sp.interpolate.interp1d(self.phase_unitcell_unwrapped, self.radius_unitcell, kind='cubic')
+        
         # Interpolate to find corresponding 'rad' values for 'phase_target'
         radius_mask = interp_func(phase_target)
 
@@ -443,14 +446,14 @@ class FullLensSim:
     def get_result_fdtd(self, show_plot= False):
         fdtd= lumapi.FDTD()
         
-        #fdtd.getresult("monitor_name","transmission")
+        
         fdtd.load("lumerical_full_lens_test.fsp")
-
+        
 
         # #====================================================
         monitor_name="transmission"
         fdtd.getdata(monitor_name,"f")
-        T1=fdtd.transmission(monitor_name)
+        T1=fdtd.transmission(monitor_name) # transmission coefficient 
         print(f"normalized power through surface near the metalens (using direct transmission): {T1}")
 
         # #=====================================================
@@ -471,7 +474,7 @@ class FullLensSim:
         y= np.squeeze(y)
 
 
-        T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower
+        T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower # transmission coefficient calculated using a different method 
         print(f"normalized power through surface near the metalens (by using Poynting vector): {T_Poynting}")
 
 
@@ -491,7 +494,7 @@ class FullLensSim:
         farfield_E_along_z= np.squeeze(farfield_E_along_z)
         farfield_E2_z= abs(farfield_E_along_z)**2 # E^2
         farfield_E2_z= farfield_E2_z[:,0] # this is the actual farfield e2_z
-        focal_calculated= z[np.where(farfield_E2_z== max(farfield_E2_z))[0]]
+        focal_calculated= z[np.where(farfield_E2_z== max(farfield_E2_z))[0]] # clauclated focal length 
 
 
         # #=====================================================
@@ -535,7 +538,7 @@ class FullLensSim:
 
 
 
-        TotalPower = 0.5* utility.integrate2D(E_squared, x, y)* np.sqrt(epsilon_0/mu_0)
+        TotalPower = 0.5* utility.integrate2D(E_squared, x, y)* np.sqrt(epsilon_0/mu_0) # total power through the focal plane 
 
 
         # #=====================================================
@@ -561,15 +564,29 @@ class FullLensSim:
 
 
 
-        PowerAtFocalSpot=  (0.5* utility.integrate2D(I_Focal_filtered, x, y)* np.sqrt(epsilon_0/mu_0))
+        PowerAtFocalSpot=  (0.5* utility.integrate2D(I_Focal_filtered, x, y)* np.sqrt(epsilon_0/mu_0)) # total power at the focal spot 
         # #=====================================================
         # Efficiency Calculation
         # #=====================================================
 
-        OverallEfficiency= PowerAtFocalSpot/ SourcePower
+        OverallEfficiency= PowerAtFocalSpot/ SourcePower 
         FocusingEfficiency= OverallEfficiency/ T_Poynting
 
-        print(f"Focal Length: {focal_calculated[0]* 1e6} μm, \nFWHM: {fwhm* 1e6} μm, \nOverall Efficiency:{OverallEfficiency}, \nFocusing Efficiency: {FocusingEfficiency}, \nTransmission Efficiency: {T1}")
+        print(f"""Focal Length: {focal_calculated[0]* 1e6} μm, 
+              \nFWHM: {fwhm* 1e6} μm, 
+              \nOverall Efficiency:{OverallEfficiency}, 
+              \nFocusing Efficiency: {FocusingEfficiency}, 
+              \nTransmission Efficiency: {T1},
+              \nTotalPower through focal plane/ source power: {TotalPower/SourcePower}""")
+        
+        # monitor_name = "transmission"
+        # Ex = fdtd.getresult(monitor_name,"Ex")
+        # Ey = fdtd.getresult(monitor_name,"Ey")
+        # x= fdtd.getresult(monitor_name, "x")
+        # y= fdtd.getresult(monitor_name, "y")
+        # z= fdtd.getresult(monitor_name, "z")
+        # return x,y,Ex 
+        
 
         if show_plot:
             # #=====================================================
