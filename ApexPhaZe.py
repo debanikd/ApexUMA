@@ -291,15 +291,16 @@ class FullLensSim:
         self.PMLDistance= LensConfig["FullLens"]["PMLDistanceFactor"]* self.Wavelength
 
         self.um= 1e-6 
-
+        
     def run_fdtd(self, xcoord,ycoord, pillar_radius):
+        fdtd= lumapi.FDTD()
         self.xcoord= xcoord 
         self.ycoord= ycoord 
         self.pillar_radius= pillar_radius
 
         lens_geometry_file_name=  'fulllens_geometry_x_y_rad_apexPHAZE_NOT_optimized.txt'
         
-        fdtd= lumapi.FDTD()
+        
 
         setup_script= """
         # create an aperture matching the diameter of the metalens 
@@ -331,7 +332,8 @@ class FullLensSim:
         fdtd.set("z span",zspan) # change the z-span later
         fdtd.set("mesh type", "auto non-uniform")
         fdtd.set("mesh accuracy", self.MeshRefinementInteger)
-
+        fdtd.set("x min bc","Anti-Symmetric")
+        fdtd.set("y min bc","Symmetric")
 
 
 
@@ -349,10 +351,7 @@ class FullLensSim:
 
 
 
-        myscript =f"""
-        deleteall;
-        # matlabload(radius_vs_phase_data_file);
-        # ?mat_sub;
+        myscript =f"""deleteall;
         np = round({self.LensRadius* self.um}/ {self.Pitch* self.um});
         x_mask = {self.Pitch* self.um} * (-np:1:np);
         y_mask = {self.Pitch* self.um} * (-np:1:np);
@@ -379,7 +378,6 @@ class FullLensSim:
 
         set("z min",0);
         set("z max",1.3e-6);
-        ?height;
         """
 
         fdtd.set("script", myscript)
@@ -442,7 +440,9 @@ class FullLensSim:
 
         # ***************************************************************************************************
 
-
+    def get_result_fdtd(self, show_plot= False):
+        fdtd= lumapi.FDTD()
+        
         #fdtd.getresult("monitor_name","transmission")
         fdtd.load("lumerical_full_lens_test.fsp")
 
@@ -571,3 +571,37 @@ class FullLensSim:
 
         print(f"Focal Length: {focal_calculated[0]* 1e6} μm, \nFWHM: {fwhm* 1e6} μm, \nOverall Efficiency:{OverallEfficiency}, \nFocusing Efficiency: {FocusingEfficiency}, \nTransmission Efficiency: {T1}")
 
+        if show_plot:
+            # #=====================================================
+            # plot FWHM
+            # #=====================================================
+            plt.scatter(x*1e6, farfield_E2_x, label='X Intensity at the focal spot', color='lightblue')
+            plt.plot(x*1e6, utility.gaussian(x, *popt), label='Fitted Gaussian', color='darkred', linewidth = 2)
+            plt.xlabel('x (μm)')
+            plt.ylabel('Intensity (arb. unit.)')
+            plt.title(f"FWHM= {round(fwhm*1e6,3)} μm")
+            plt.show()
+            #=====================================================
+
+
+            # #=====================================================
+            # plot Intensity at focal plane 
+            # #=====================================================
+            # Intensity plot at the focal plane 
+            extent = [np.min(x), np.max(x), np.min(y), np.max(y)]
+            extent= [i* 1e6  for i in extent]
+            plt.imshow(E_squared, cmap ="viridis", interpolation ='nearest', extent= extent)
+            plt.xlabel('x (μm)')
+            plt.ylabel('y (μm)')
+            plt.title('Intensity at the focal plane')
+            plt.show()
+
+
+            # #=====================================================
+            # Plot intensity along z-axis 
+            # #=====================================================
+            plt.plot(z*1e6, farfield_E2_z, linewidth = 2, color= 'darkgreen')
+            plt.vlines(x= focal_calculated*1e6, ymin= min(farfield_E2_z), ymax=max(farfield_E2_z), linestyle= '--', color= 'black')
+            plt.xlabel('z (μm)')
+            plt.ylabel('Intensity (arb. unit.)')
+            plt.show()
