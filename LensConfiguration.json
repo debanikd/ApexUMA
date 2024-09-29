@@ -4,10 +4,6 @@
     "Wavelength": 1.55,
     "SubstrateIndex": 1.46,
     "PillarIndex": 3.4757,
-    "PhaseDesign": 
-    {
-        "optimized_or_ideal": "optimized"
-    },
     "UnitCell": 
     {
         "Period": 0.4,
@@ -15,6 +11,11 @@
         "Height": 1.27,
         "NumAtom": 11
 
+    },
+    "FullLens":
+    {
+        "MeshRefinementInteger": 3,
+        "PMLDistanceFactor": 1.0
     }
 
     
