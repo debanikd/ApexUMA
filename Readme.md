@@ -1,4 +1,4 @@
-### **README: ApexUMA **
+### **README: ApexUMA**
 #### **Version**: 1.0.0
 
 ---
