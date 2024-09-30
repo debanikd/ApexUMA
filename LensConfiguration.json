@@ -1,0 +1,23 @@
+{
+    "LensDiameter": 50.0,
+    "FocalLength": 100,
+    "Wavelength": 1.55,
+    "SubstrateIndex": 1.46,
+    "PillarIndex": 3.4757,
+    "UnitCell": 
+    {
+        "Period": 0.4,
+        "Radius":[0.0625,0.175],
+        "Height": 1.27,
+        "NumAtom": 11
+
+    },
+    "FullLens":
+    {
+        "MeshRefinementInteger": 3,
+        "PMLDistanceFactor": 1.0
+    }
+
+    
+
+}
