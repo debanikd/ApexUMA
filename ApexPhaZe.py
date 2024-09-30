@@ -263,13 +263,13 @@ class  LensDesign:
         # Stack arrays column-wise
         data = np.column_stack((x_python, y_python, rad_python))
 
-        # Save to CSV
-        if idealphase:
-            fname= '_idealphase'
-        else:
-            fname= '_optimized'
+        # # Save to CSV
+        # if idealphase:
+        #     fname= '_idealphase'
+        # else:
+        #     fname= '_optimized'
             
-        np.savetxt('fulllens_geometry_x_y_rad_apexPHAZE'+ fname+ '.txt', data, delimiter=",")
+        np.savetxt('lensgeom.txt', data, delimiter=",")
         return x_python, y_python, rad_python
             
     
@@ -301,7 +301,7 @@ class FullLensSim:
         self.ycoord= ycoord 
         self.pillar_radius= pillar_radius
 
-        lens_geometry_file_name=  'fulllens_geometry_x_y_rad_apexPHAZE_NOT_optimized.txt'
+        lens_geometry_file_name=  'lensgeom.txt'
         
         
 
@@ -345,6 +345,8 @@ class FullLensSim:
         # #==================================================
         fdtd.addstructuregroup()
         fdtd.set("name", "metalens")
+        fdtd.set("x", 0e-6)
+        fdtd.set("y",0e-6)
         # fdtd.adduserprop("radius_vs_phase_data_file", 1, radius_phase_file)
         fdtd.adduserprop("lens_geometry_file", 1, lens_geometry_file_name)
         fdtd.adduserprop("focal_length", 2, self.FocalLength* self.um)
@@ -376,11 +378,11 @@ class FullLensSim:
         }}
         select("pillar");
         set("index",{self.PillarIndex});
-        # set("material", "si");
+        
 
 
         set("z min",0);
-        set("z max",1.3e-6);
+        set("z max",{self.Height* self.um });
         """
 
         fdtd.set("script", myscript)
@@ -452,30 +454,31 @@ class FullLensSim:
 
         # #====================================================
         monitor_name="transmission"
-        fdtd.getdata(monitor_name,"f")
-        T1=fdtd.transmission(monitor_name) # transmission coefficient 
+        f=fdtd.getdata(monitor_name,"f")
+        T1=fdtd.transmission(monitor_name) # transmission coefficient
+        SourcePower= fdtd.sourcepower(f) 
         print(f"normalized power through surface near the metalens (using direct transmission): {T1}")
 
-        # #=====================================================
-        # Calculate the power using Poynting vector Pz
-        # #=====================================================
-        # second way to calculate power through a surface - transmission
-        x=fdtd.getdata(monitor_name,"x")
-        y=fdtd.getdata(monitor_name,"y")
-        f=fdtd.getdata(monitor_name,"f")
-        Pz=fdtd.getdata(monitor_name,"Pz")
-        SourcePower= fdtd.sourcepower(f)
+        # # #=====================================================
+        # # Calculate the power using Poynting vector Pz
+        # # #=====================================================
+        # # second way to calculate power through a surface - transmission
+        # x=fdtd.getdata(monitor_name,"x")
+        # y=fdtd.getdata(monitor_name,"y")
+        # f=fdtd.getdata(monitor_name,"f")
+        # Pz=fdtd.getdata(monitor_name,"Pz")
+        # SourcePower= fdtd.sourcepower(f)
 
 
 
-        Pz_real= np.real(Pz)
-        Pz_real= np.squeeze(Pz_real)
-        x= np.squeeze(x)
-        y= np.squeeze(y)
+        # Pz_real= np.real(Pz)
+        # Pz_real= np.squeeze(Pz_real)
+        # x= np.squeeze(x)
+        # y= np.squeeze(y)
 
 
-        T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower # transmission coefficient calculated using a different method 
-        print(f"normalized power through surface near the metalens (by using Poynting vector): {T_Poynting}")
+        # T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower # transmission coefficient calculated using a different method 
+        # print(f"normalized power through surface near the metalens (by using Poynting vector): {T_Poynting}")
 
 
         # #=====================================================
@@ -525,6 +528,7 @@ class FullLensSim:
 
         # Calculate FWHM
         fwhm = 2 * np.sqrt(2 * np.log(2)) * stddev
+        fwhm= abs(fwhm)
         # #=====================================================
         # #=====================================================
         # Total power through the FOCAL PLANE
@@ -570,7 +574,7 @@ class FullLensSim:
         # #=====================================================
 
         OverallEfficiency= PowerAtFocalSpot/ SourcePower 
-        FocusingEfficiency= OverallEfficiency/ T_Poynting
+        FocusingEfficiency= OverallEfficiency/ T1
 
         print(f"""Focal Length: {focal_calculated[0]* 1e6} μm, 
               \nFWHM: {fwhm* 1e6} μm, 
