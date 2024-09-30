@@ -1,6 +1,6 @@
 {
-    "LensDiameter": 50.0,
-    "FocalLength": 100,
+    "LensDiameter": 20.0,
+    "FocalLength": 100.0,
     "Wavelength": 1.55,
     "SubstrateIndex": 1.46,
     "PillarIndex": 3.4757,
