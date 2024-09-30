@@ -1,9 +1,0 @@
-Ansys Lumerical 2024 R2.1 FDTD Solver Version 8.32.3856 (Windows 64bit)
- expires (month/day/year): 6/26/2025
-using config file: Ansys Licensing set with ANSYSLMD_LICENSE_FILE
-license host: 1055@localhost
-current time: Sun Sep 29 17:15:33 2024
-Running on host: WIN-CQAJA1618V0
-host available memory (GB): 53.068362
-All processes are communicating and ready to proceed to simulation...
-Running fsp file: C:\Program Files\Lumerical\v242\bin\fdtd-engine-msmpi.exe -t 1 -remote -shared-solve-license QU5TWVNfTElDRU5TSU5HX0NPTlRFWFRfREFUQT08QU5TWVNfTElDRU5TSU5HX0NPTlRFWFRfREFUQT48SUQ+ZDdjM2ZhZGUtM2RkMS00YzZlLWJmMDYtYWYzYjg3OWE5NTRhPC9JRD48VFlQRT5BUFBfREVGSU5FRDwvVFlQRT48TkFNRT5sdW1fc3RhbmRhcmRfc29sdmVfc2hhcmU8L05BTUU+PEhBTkRMRVI+NTMzNDhAV0lOLUNRQUpBMTYxOFYwPC9IQU5ETEVSPjwvQU5TWVNfTElDRU5TSU5HX0NPTlRFWFRfREFUQT4K C:/Users/DebanikDas/Documents/GitHub/ApexPHAZE/lumerical_full_lens_test.fsp
