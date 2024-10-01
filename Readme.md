@@ -1,11 +1,19 @@
-### **README: ApexUMA**
+### **README: ApexUMA (Apex Unified Metalens Application)**
 #### **Version**: 1.0.0
 
 ---
 
 ### **Overview**
 
-**What is it?**
+**What is it?** Metalens design involves several steps 
+1) Target Phase Design using Ray Optics Software such as Zemax,
+2) Unit Cell Libray creation, 
+3) Unit Cell to Full Lens Design 
+4) Full Lens Simulation using FDTD softeare such as Lumerical, 
+5) Final performance evaluation od the metalens using Zemax,
+6) Zemax Layout.
+
+This rquires mannual transfer of data and running simulation seperately. This is a **modularized** effort to streamline the process from phase design to fab-rady GDS layout. At this stage it is dependent on two third party softwares **Zemax OpticStudio** and **Lumerical FDTD**.
 
 **Dependencies**:
 * `numpy` 
@@ -73,7 +81,7 @@
 
 ### **How to Use**
 
-1. **Load Configurations**:
+1. **Load Configurations** (Optional):
 
    ```python
    from ApexUMA.utility import ConfigReader
@@ -82,6 +90,7 @@
    ConfigReader.load_config('your_config.json')
    config = ConfigReader.get_config()
    ```
+   If no configuration file is mentioned the default configuration file name is chose. The default is current_directory + "LensConfiguration.json".
 
 2. **Lumerical API**: The Lumerical path is set in the script; no further action is required if the API is installed properly.
 
@@ -95,6 +104,7 @@
    x, phase_zemax = phase_design.load_optimized_phase('path_to_zemax_file.txt')
    phase_design.compare_optimized_ideal()
    ```
+   - Now the Zemax generated phase data has to be supplied manually - which should be **automated** later.
 
 4. **UnitCellDesign Class**:
 
@@ -104,6 +114,11 @@
    unit_cell_design = UnitCellDesign()
    diameter, phase, transmission = unit_cell_design.make_unit_cell_library(show_plot=True)
    ```
+- This step depends on the package ApexAtoms package written by Dr. David Lombardo, Apex Microdevices.
+- **(Not Implemented Yet)** In the case, one wants to provide the file name of the x,y,radius data instead of generating it using inbuilt ApexAtoms- one can accomplish that using 
+    ```python 
+    read_unit_cell_library(file_path= 'x_y_pillar_radius_data.txt')
+    ```
 
 5. **LensDesign Class**:
 

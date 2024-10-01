@@ -457,7 +457,7 @@ class FullLensSim:
         f=fdtd.getdata(monitor_name,"f")
         T1=fdtd.transmission(monitor_name) # transmission coefficient
         SourcePower= fdtd.sourcepower(f) 
-        print(f"normalized power through surface near the metalens (using direct transmission): {T1}")
+        #print(f"normalized power through surface near the metalens (using direct transmission): {T1}")
 
         # # #=====================================================
         # # Calculate the power using Poynting vector Pz
@@ -510,25 +510,31 @@ class FullLensSim:
         farfield_E2_x= abs(farfield_E_along_x_at_focal)**2 # Ex^2
         farfield_E2_x= farfield_E2_x[:,0] # this is the actual farfield e2_x
 
+       
 
+        # # Calculate initial guess for the parameters
+        # initial_amplitude = np.max(farfield_E2_x)  # Amplitude as the maximum value in the data
+        # initial_mean = x[np.argmax(farfield_E2_x)]  # Mean as the x-value at the maximum y-value
+        # initial_stddev = np.std(x)  # Standard deviation, can be adjusted based on data spread
 
-        # Calculate initial guess for the parameters
-        initial_amplitude = np.max(farfield_E2_x)  # Amplitude as the maximum value in the data
-        initial_mean = x[np.argmax(farfield_E2_x)]  # Mean as the x-value at the maximum y-value
-        initial_stddev = np.std(x)  # Standard deviation, can be adjusted based on data spread
+        # # Combine into an initial guess
+        # initial_guess = [initial_amplitude, initial_mean, initial_stddev]
 
-        # Combine into an initial guess
-        initial_guess = [initial_amplitude, initial_mean, initial_stddev]
+        # # Fit the Gaussian to the data
+        # popt, pcov = curve_fit(utility.gaussian, x, farfield_E2_x, p0=initial_guess)
 
-        # Fit the Gaussian to the data
-        popt, pcov = curve_fit(utility.gaussian, x, farfield_E2_x, p0=initial_guess)
+        # # Extract the fitted parameters
+        # amplitude, mean, stddev = popt
 
-        # Extract the fitted parameters
-        amplitude, mean, stddev = popt
+        # # Calculate FWHM
+        # fwhm = 2 * np.sqrt(2 * np.log(2)) * stddev
+        # fwhm= abs(fwhm)
+        fwhm= utility.FWHM(x, farfield_E2_x)
+        real_diameter= self.LensDiameter* self.um
 
-        # Calculate FWHM
-        fwhm = 2 * np.sqrt(2 * np.log(2)) * stddev
-        fwhm= abs(fwhm)
+        # diff_lim = utility.airy(xs=x , real_diameter= real_diameter, focal_length= self.FocalLength* self.um, wavelength=self.Wavelength* self.um)#, fwhm_desired= 0.5 * wavelength / NA)
+        # fwhm_airy = utility.FWHM(x, diff_lim)
+        
         # #=====================================================
         # #=====================================================
         # Total power through the FOCAL PLANE
@@ -552,8 +558,8 @@ class FullLensSim:
         FocalSpotRadius= 2* fwhm
         # Generate meshgrid
         X, Y = np.meshgrid(x, y)
-        x_center= 1e-6 
-        y_center= 1e-6 
+        x_center= 0e-6 
+        y_center= 0e-6 
 
         # Calculate the distance from the center
         distances = np.sqrt((X - x_center)**2 + (Y - y_center)**2)
@@ -576,12 +582,15 @@ class FullLensSim:
         OverallEfficiency= PowerAtFocalSpot/ SourcePower 
         FocusingEfficiency= OverallEfficiency/ T1
 
-        print(f"""Focal Length: {focal_calculated[0]* 1e6} μm, 
-              \nFWHM: {fwhm* 1e6} μm, 
-              \nOverall Efficiency:{OverallEfficiency}, 
-              \nFocusing Efficiency: {FocusingEfficiency}, 
-              \nTransmission Efficiency: {T1},
-              \nTotalPower through focal plane/ source power: {TotalPower/SourcePower}""")
+        print(f"""Focal Length: {round(focal_calculated[0]* (1/self.um),5)} μm, 
+              \nFWHM: {round(fwhm* (1/self.um),5)} μm, 
+              \nOverall Efficiency:{round(OverallEfficiency,5)}, 
+              \nFocusing Efficiency: {round(FocusingEfficiency,5)}, 
+              \nTransmission Efficiency: {round(T1,5)},
+              \nTotal Power through focal plane/ source power: {round(TotalPower/SourcePower,5)}
+                """)
+        
+        # \nDiffraction Lim FWHM= {round(fwhm_airy* (1/self.um),5)}
         
         # monitor_name = "transmission"
         # Ex = fdtd.getresult(monitor_name,"Ex")
@@ -596,8 +605,9 @@ class FullLensSim:
             # #=====================================================
             # plot FWHM
             # #=====================================================
-            plt.scatter(x*1e6, farfield_E2_x, label='X Intensity at the focal spot', color='lightblue')
-            plt.plot(x*1e6, utility.gaussian(x, *popt), label='Fitted Gaussian', color='darkred', linewidth = 2)
+            plt.plot(x*1e6, farfield_E2_x, label='X Intensity at the focal spot', color='darkred')
+            #plt.plot(x*1e6, utility.gaussian(x, *popt), label='Fitted Gaussian', color='darkred', linewidth = 2)
+            #plt.plot(x*1e6, diff_lim, label='Diff limited intensity', color='darkgreen')
             plt.xlabel('x (μm)')
             plt.ylabel('Intensity (arb. unit.)')
             plt.title(f"FWHM= {round(fwhm*1e6,3)} μm")
