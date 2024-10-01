@@ -7,6 +7,7 @@ import pandas as pd
 import re
 import json 
 from scipy.integrate import  simpson
+from scipy.special import j1
 
 
    
@@ -76,3 +77,22 @@ def gaussian(x, amp, mean, stddev):
 
 def integrate2D(A, x, y):
      return simpson(y=simpson(y=A, x=x), x=y)
+
+def FWHM(xs, Is):
+    # assume uniform sampling in xs
+    dx = np.mean(np.diff(xs))
+    hm = np.max(Is) / 2.0
+    return dx * np.sum(Is > hm)
+
+# not verified 
+# def airy(xs, real_diameter, focal_length, wavelength, fwhm_desired=None):
+#     # FWHM = 1.028λ/D
+#     if fwhm_desired:
+#         D = 1.028 * wavelength / fwhm_desired
+#         c = np.pi * D / wavelength
+#     else:
+#         D = real_diameter / (100 * wavelength)
+#         c = D*0.63 * np.pi *  real_diameter / wavelength
+
+#     arg = c * xs / np.sqrt(xs**2 + focal_length**2) + 1e-12
+#     return 1 * (j1(arg) / arg) **2
