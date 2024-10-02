@@ -5,15 +5,17 @@
 
 ### **Overview**
 
-**What is it?** Metalens design involves several steps 
-1) Target Phase Design using Ray Optics Software such as Zemax,
-2) Unit Cell Libray creation, 
-3) Unit Cell to Full Lens Design 
-4) Full Lens Simulation using FDTD softeare such as Lumerical, 
-5) Final performance evaluation od the metalens using Zemax,
-6) Zemax Layout.
+**What is it?** 
 
-This rquires mannual transfer of data and running simulation seperately. This is a **modularized** effort to streamline the process from phase design to fab-rady GDS layout. At this stage it is dependent on two third party softwares **Zemax OpticStudio** and **Lumerical FDTD**.
+**Metalens** design workflow involves several steps 
+1) Target Phase Design using Ray Optics Software such as Zemax,
+2) Unit Cell Libray creation and Library Optimization for complex scenario such as achromatic response, 
+3) Unit Cell to Full Lens Design conversion, 
+4) Full Lens Simulation using FDTD software such as Lumerical FDTD, 
+5) Final optical performance evaluation of the metalens using Zemax,
+6) Export the finalized design to GDS Layout.
+
+This rquires mannual transfer of data and running multiple softwares seperately. To bypass this unstructured approach, the ApexUMA is a **modularized** effort to streamline the process from phase design to fab-ready GDS layout. At this stage it is dependent on two third party softwares **Zemax OpticStudio** and **Lumerical FDTD**.
 
 **Dependencies**:
 * `numpy` 
@@ -21,12 +23,12 @@ This rquires mannual transfer of data and running simulation seperately. This is
 * `matplotlib`
 * `json` 
 * `lumapi` (ensure it's linked properly to Lumerical)
+* `ApexAtoms` (Apex inhouse unit cell simualtion framework)
 
 ### **Key Features**
-- **ConfigReader**: A utility to load and manage configuration files in JSON format.
-- **Lumerical API Integration**: Connects Python to the Lumerical simulation platform using `lumapi`.
-- **Default Configuration**: Automatically uses a default configuration if none is provided.
+- **ConfigReader**: A utility to load and manage configuration files in JSON format. This configuration file contains useful info about the lens such as Focal length, wavelength of operation, diameter etc.
 
+- **Lumerical API Integration**: Connects Python to the Lumerical simulation platform using `lumapi`.
 
 - **PhaseDesign Class**: 
    - Loads and processes optimized phase data from Zemax files.
@@ -35,6 +37,7 @@ This rquires mannual transfer of data and running simulation seperately. This is
 - **UnitCellDesign Class**: 
    - Creates a unit cell design library using parameters like wavelength, focal length, and material indices from the configuration file.
    - Provides an option to visualize phase vs. diameter relationships for unit cells.
+- **UnitCellOptimize Class**: (TO BE ADDED )
 - **LensDesign Class**:
    - Generates lens geometries based on optimized phase profiles and unit cell data.
    - Visualizes the lens design and saves the geometry to a text file.
@@ -42,15 +45,14 @@ This rquires mannual transfer of data and running simulation seperately. This is
 - **FullLensSim Class**:
    - Sets up and runs FDTD simulations of the designed lens.
    - Configures the simulation environment, including lens geometry, sources, and monitors.
-   - Get result from the FDTD simulation. Run FDTD and Get result FDTD are intentionally seperated. 
-   - Transmission Coefficient Calculation: Using both direct transmission and potentially Poynting vector methods (commented out).
-    Outputting the normalized power through the surface near the metalens.
-   - Focal Length Calculation:
+   - Get result from the FDTD simulation. Running FDTD and getting the results from FDTD are intentionally seperated for debugging purposes. 
+   - **Transmission Coefficient Calculation**: Using both direct transmission and potentially Poynting vector methods (commented out). 
+   - **Focal Length Calculation**:
     The focal length is calculated by analyzing the far-field electric field data along the z-axis and finding the point of maximum intensity.
-    - FWHM Calculation:A Gaussian fitting approach to determine the beam's Full Width at Half Maximum (FWHM) using curve_fit from scipy.optimize.
-    - Power Calculations: Calculation of total power through the focal plane and at the focal spot.
-    Efficiency calculations based on the power through the focal spot and source power.
-   - Plotting:Visualization of the intensity profile, Gaussian fit, and focal plane intensity.
+    - **FWHM Calculation**:FWHM is calculated using the x-y intensity profile at the focal plane.
+    - **Focusing and Overall Calculations**: 'Encircled Power' is defined as the the power concentrated in the circle around the focal spot with radius = 2* FWHM. The 'Overall Efficiency' is defined as the ratio of the 'Encircled Power' and the 'Source Power'. On the other hand, the 'Focusing Efficiency' is the ratio of the 'Overall Efficiecny' and the transmission efficiency. Overall Efficiency =  Transmission Efficiency $\times$ Focusing Efficiency.
+
+   - **Plotting**:Visualization of the intensity profile, x-y Intensity Profile, and focal plane intensity.
 
 ---
 
@@ -60,7 +62,7 @@ This rquires mannual transfer of data and running simulation seperately. This is
 2. Install required packages:
 
    ```bash
-   pip install numpy scipy matplotlib apexatoms lumapi
+   pip install numpy scipy matplotlib lumapi
    ```
 
 3. Make sure Lumerical API is installed, and its path is correctly appended in the script:
@@ -68,13 +70,9 @@ This rquires mannual transfer of data and running simulation seperately. This is
    ```python
    sys.path.append("C:\\Program Files\\Lumerical\\v242\\api\\python")
 
-4. **Install ApexAtoms**:
-   
-   ```bash
-   pip install apexatoms
-   ```
+4. **ApexAtoms**: This should be distributed with the ApexUMA. (Installation may or may not be required.)
 
-5. **Ensure Zemax data files** are available for phase design.
+
 
 
 ---
@@ -90,9 +88,9 @@ This rquires mannual transfer of data and running simulation seperately. This is
    ConfigReader.load_config('your_config.json')
    config = ConfigReader.get_config()
    ```
-   If no configuration file is mentioned the default configuration file name is chose. The default is current_directory + "LensConfiguration.json".
+   If no configuration file is mentioned the default configuration file name is chose. The default is ```current_directory + "\\LensConfiguration.json"```.
 
-2. **Lumerical API**: The Lumerical path is set in the script; no further action is required if the API is installed properly.
+2. **Lumerical API**: The Lumerical path is set in the script; no further action is required if the API is installed properly. Lumerical version is mentioned in the system path ```sys.path.append("C:\\Program Files\\Lumerical\\v242\\api\\python")```.
 
 
 3. **PhaseDesign Class**:
