@@ -323,7 +323,7 @@ class FullLensSim:
         # #==================================================
         xspan =  (self.LensDiameter+ 2* self.PMLDistance)* self.um
         yspan = (self.LensDiameter+ 2* self.PMLDistance)* self.um
-        zspan= 1.8* self.um 
+        zspan= 1.8* self.um # this should be changed to something general
 
         fdtd.addfdtd()
         fdtd.set("dimension",2);  #  1 = 2D, 2 = 3D
@@ -444,118 +444,83 @@ class FullLensSim:
         fdtd.run()
 
         # ***************************************************************************************************
-
-    def get_result_fdtd(self, show_plot= False):
-        fdtd= lumapi.FDTD()
-        
-        
-        fdtd.load(current_directory+ "\\ApexUMA\\lumerical_full_lens_test.fsp")
-        
-
-        # #====================================================
-        monitor_name="transmission"
+    
+    def _get_transmission(self,fdtd, monitor_name):
         f=fdtd.getdata(monitor_name,"f")
         T1=fdtd.transmission(monitor_name) # transmission coefficient
-        SourcePower= fdtd.sourcepower(f) 
-        #print(f"normalized power through surface near the metalens (using direct transmission): {T1}")
-
-        # # #=====================================================
-        # # Calculate the power using Poynting vector Pz
-        # # #=====================================================
-        # # second way to calculate power through a surface - transmission
-        # x=fdtd.getdata(monitor_name,"x")
-        # y=fdtd.getdata(monitor_name,"y")
-        # f=fdtd.getdata(monitor_name,"f")
-        # Pz=fdtd.getdata(monitor_name,"Pz")
-        # SourcePower= fdtd.sourcepower(f)
+        return T1
+    
+    def _get_transmission_via_poynting(self,fdtd, monitor_name):
+        x=fdtd.getdata(monitor_name,"x")
+        y=fdtd.getdata(monitor_name,"y")
+        f=fdtd.getdata(monitor_name,"f")
+        Pz=fdtd.getdata(monitor_name,"Pz")
+        SourcePower= fdtd.sourcepower(f)
+       
 
 
 
-        # Pz_real= np.real(Pz)
-        # Pz_real= np.squeeze(Pz_real)
-        # x= np.squeeze(x)
-        # y= np.squeeze(y)
+        Pz_real= np.real(Pz)
+        Pz_real= np.squeeze(Pz_real)
+        x= np.squeeze(x)
+        y= np.squeeze(y)
 
 
-        # T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower # transmission coefficient calculated using a different method 
-        # print(f"normalized power through surface near the metalens (by using Poynting vector): {T_Poynting}")
+        T_Poynting= (utility.integrate2D(Pz_real, x, y)* 0.5)/ SourcePower # transmission coefficient calculated using a different method 
+        return T_Poynting
 
-
-        # #=====================================================
-        # Calculate the Focal Length 
-        # #=====================================================
-
-        # choose area to plot and spatial resolution
-        x = self.um* np.linspace(-self.LensRadius,self.LensRadius,200)
-        y = self.um* np.linspace(-self.LensRadius,self.LensRadius,200)
-        z =  np.linspace(1e-6,1.5*self.FocalLength* self.um,100)
-
-
-
+    def _calculate_focal_length(self,fdtd,z, monitor_name, show_plot= False):
         # get the focal length 
         farfield_E_along_z = fdtd.farfieldexact3d(monitor_name,0,0,z)
         farfield_E_along_z= np.squeeze(farfield_E_along_z)
         farfield_E2_z= abs(farfield_E_along_z)**2 # E^2
         farfield_E2_z= farfield_E2_z[:,0] # this is the actual farfield e2_z
-        focal_calculated= z[np.where(farfield_E2_z== max(farfield_E2_z))[0]] # clauclated focal length 
+        focal_calculated= z[np.where(farfield_E2_z== max(farfield_E2_z))[0]] # clauclated focal length
 
-
-        # #=====================================================
-        # Calculate the FWHM of the beam 
-        # #=====================================================
-        # EFocal = fdtd.farfieldexact3d('field', x, y, focal_calculated, {"field":"E"})
-
+        if show_plot:
+            # #=====================================================
+            # Plot intensity along z-axis 
+            # #=====================================================
+            plt.plot(z*1e6, farfield_E2_z, linewidth = 2, color= 'darkgreen')
+            plt.vlines(x= focal_calculated*1e6, ymin= min(farfield_E2_z), ymax=max(farfield_E2_z), linestyle= '--', color= 'black')
+            plt.xlabel('z (μm)')
+            plt.ylabel('Intensity (arb. unit.)')
+            plt.show()
+        return focal_calculated
+    
+    def _get_fwhm(self,fdtd, x , monitor_name, focal_calculated, show_plot= False):
         farfield_E_along_x_at_focal = fdtd.farfieldexact3d(monitor_name,x,0, focal_calculated)
         farfield_E_along_x_at_focal= np.squeeze(farfield_E_along_x_at_focal)
         farfield_E2_x= abs(farfield_E_along_x_at_focal)**2 # Ex^2
         farfield_E2_x= farfield_E2_x[:,0] # this is the actual farfield e2_x
 
-       
-
-        # # Calculate initial guess for the parameters
-        # initial_amplitude = np.max(farfield_E2_x)  # Amplitude as the maximum value in the data
-        # initial_mean = x[np.argmax(farfield_E2_x)]  # Mean as the x-value at the maximum y-value
-        # initial_stddev = np.std(x)  # Standard deviation, can be adjusted based on data spread
-
-        # # Combine into an initial guess
-        # initial_guess = [initial_amplitude, initial_mean, initial_stddev]
-
-        # # Fit the Gaussian to the data
-        # popt, pcov = curve_fit(utility.gaussian, x, farfield_E2_x, p0=initial_guess)
-
-        # # Extract the fitted parameters
-        # amplitude, mean, stddev = popt
-
-        # # Calculate FWHM
-        # fwhm = 2 * np.sqrt(2 * np.log(2)) * stddev
-        # fwhm= abs(fwhm)
         fwhm= utility.FWHM(x, farfield_E2_x)
-        real_diameter= self.LensDiameter* self.um
+        if show_plot:
+            plt.plot(x*1e6, farfield_E2_x, label='X Intensity at the focal spot', color='darkred')
+            plt.xlabel('x (μm)')
+            plt.ylabel('Intensity (arb. unit.)')
+            plt.title(f"FWHM= {round(fwhm*1e6,3)} μm")
+            plt.show()
+        return fwhm 
+    
 
-        # diff_lim = utility.airy(xs=x , real_diameter= real_diameter, focal_length= self.FocalLength* self.um, wavelength=self.Wavelength* self.um)#, fwhm_desired= 0.5 * wavelength / NA)
-        # fwhm_airy = utility.FWHM(x, diff_lim)
-        
-        # #=====================================================
-        # #=====================================================
-        # Total power through the FOCAL PLANE
-        # #=====================================================
+    def _calculate_focusing_efficiency(self, fdtd, x,y,focal_calculated, FocalSpotRadius, monitor_name, show_plot=False):
         farfield_E_total= fdtd.farfieldexact3d(monitor_name, x, y, focal_calculated, {"field":"E"})
+        f=fdtd.getdata(monitor_name,"f")
+        SourcePower= fdtd.sourcepower(f)
+        
+
         farfield_E_total= np.squeeze(farfield_E_total)
         Ex= farfield_E_total[:,:,0]
         Ey= farfield_E_total[:,:,1]
         Ez= farfield_E_total[:,:,2]
         E_squared= abs(Ex)**2+ abs(Ey)**2
-
-
-
-        TotalPower = 0.5* utility.integrate2D(E_squared, x, y)* np.sqrt(epsilon_0/mu_0) # total power through the focal plane 
-
-
+        
+        #TotalPower = 0.5* utility.integrate2D(E_squared, x, y)* np.sqrt(epsilon_0/mu_0) # total power through the 
+        
         # #=====================================================
         # Total power through the FOCAL SPOT (2* FWHM radius)
         # #=====================================================
-
-        FocalSpotRadius= 2* fwhm
         # Generate meshgrid
         X, Y = np.meshgrid(x, y)
         x_center= 0e-6 
@@ -570,51 +535,10 @@ class FullLensSim:
         # Apply the filter to I_Focal
         I_Focal_filtered = filter_mask *E_squared
 
-
-
-
-
         PowerAtFocalSpot=  (0.5* utility.integrate2D(I_Focal_filtered, x, y)* np.sqrt(epsilon_0/mu_0)) # total power at the focal spot 
-        # #=====================================================
-        # Efficiency Calculation
-        # #=====================================================
-
-        OverallEfficiency= PowerAtFocalSpot/ SourcePower 
-        FocusingEfficiency= OverallEfficiency/ T1
-
-        print(f"""Focal Length: {round(focal_calculated[0]* (1/self.um),5)} μm, 
-              \nFWHM: {round(fwhm* (1/self.um),5)} μm, 
-              \nOverall Efficiency:{round(OverallEfficiency,5)}, 
-              \nFocusing Efficiency: {round(FocusingEfficiency,5)}, 
-              \nTransmission Efficiency: {round(T1,5)},
-              \nTotal Power through focal plane/ source power: {round(TotalPower/SourcePower,5)}
-                """)
-        
-        # \nDiffraction Lim FWHM= {round(fwhm_airy* (1/self.um),5)}
-        
-        # monitor_name = "transmission"
-        # Ex = fdtd.getresult(monitor_name,"Ex")
-        # Ey = fdtd.getresult(monitor_name,"Ey")
-        # x= fdtd.getresult(monitor_name, "x")
-        # y= fdtd.getresult(monitor_name, "y")
-        # z= fdtd.getresult(monitor_name, "z")
-        # return x,y,Ex 
-        
+        OverallEfficiency= PowerAtFocalSpot/ SourcePower
 
         if show_plot:
-            # #=====================================================
-            # plot FWHM
-            # #=====================================================
-            plt.plot(x*1e6, farfield_E2_x, label='X Intensity at the focal spot', color='darkred')
-            #plt.plot(x*1e6, utility.gaussian(x, *popt), label='Fitted Gaussian', color='darkred', linewidth = 2)
-            #plt.plot(x*1e6, diff_lim, label='Diff limited intensity', color='darkgreen')
-            plt.xlabel('x (μm)')
-            plt.ylabel('Intensity (arb. unit.)')
-            plt.title(f"FWHM= {round(fwhm*1e6,3)} μm")
-            plt.show()
-            #=====================================================
-
-
             # #=====================================================
             # plot Intensity at focal plane 
             # #=====================================================
@@ -626,13 +550,46 @@ class FullLensSim:
             plt.ylabel('y (μm)')
             plt.title('Intensity at the focal plane')
             plt.show()
+        return OverallEfficiency
+
+    def get_result_fdtd(self, show_plot= False):
+        fdtd= lumapi.FDTD()
+        
+        
+        fdtd.load(current_directory+ "\\ApexUMA\\lumerical_full_lens_test.fsp")
+        #=====================================================
+        # get transmission
+        # #====================================================
+        monitor_name="transmission"
+        # choose area to plot and spatial resolution
+        x = self.um* np.linspace(-self.LensRadius,self.LensRadius,200)
+        y = self.um* np.linspace(-self.LensRadius,self.LensRadius,200)
+        z =  np.linspace(1e-6,1.5*self.FocalLength* self.um,100)
+        
+        trans =  self._get_transmission(fdtd= fdtd, monitor_name= monitor_name)
+        
+        focal_calculated= self._calculate_focal_length(fdtd=fdtd, z=z, monitor_name= monitor_name, show_plot=show_plot)
+
+        fwhm= self._get_fwhm(fdtd= fdtd, x= x, monitor_name= monitor_name, focal_calculated= focal_calculated, 
+                             show_plot= show_plot)
+
+        OverallEfficiency = self._calculate_focusing_efficiency(fdtd, x= x,y= y,focal_calculated= focal_calculated,
+                                                                 FocalSpotRadius= 2* fwhm, monitor_name= monitor_name, show_plot=show_plot)
+        
+
+         
+        FocusingEfficiency= OverallEfficiency/ trans
+
+        print(f"""Focal Length: {round(focal_calculated[0]* (1/self.um),5)} μm, 
+              \nFWHM: {round(fwhm* (1/self.um),5)} μm, 
+              \nOverall Efficiency:{round(OverallEfficiency,5)}, 
+              \nFocusing Efficiency: {round(FocusingEfficiency,5)}, 
+              \nTransmission Efficiency: {round(trans,5)}
+                """)
+        
+        
+
+            
 
 
-            # #=====================================================
-            # Plot intensity along z-axis 
-            # #=====================================================
-            plt.plot(z*1e6, farfield_E2_z, linewidth = 2, color= 'darkgreen')
-            plt.vlines(x= focal_calculated*1e6, ymin= min(farfield_E2_z), ymax=max(farfield_E2_z), linestyle= '--', color= 'black')
-            plt.xlabel('z (μm)')
-            plt.ylabel('Intensity (arb. unit.)')
-            plt.show()
+           
