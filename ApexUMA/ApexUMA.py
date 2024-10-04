@@ -49,7 +49,23 @@ class  PhaseDesign:
         LensConfig= ConfigReader.get_config()
         self.FocalLength= LensConfig["FocalLength"]
         self.Wavelength = LensConfig["Wavelength"]
-    def load_optimized_phase(self,file_path):
+    
+    def _compare_optimized_ideal(self):
+        phase_hyperbolic = -(2*np.pi/self.Wavelength)*(np.sqrt(self.x_zemax**2+self.FocalLength**2)-self.FocalLength) # Hyperbolic lens is assumed with mod 2pi phase target
+        phase_hyperbolic= phase_hyperbolic- min(phase_hyperbolic)
+
+
+        plt.scatter(self.x_zemax, self.phase_zemax, color= 'darkblue',label= 'Zemax Optimized Phase')
+        plt.plot(self.x_zemax, phase_hyperbolic,linestyle= '--',color='darkred', label= 'Ideal Hyperbolic Phase', linewidth= 2.0)
+        plt.ylabel('Phase (rad)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
+        plt.xlabel('Radius (μm)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
+        #plt.ylim(0,2* np.pi)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+
+    def load_optimized_phase(self,file_path, show_plot= False):
         # NOTE: zemax x coordinate may be in mm 
         # Check
         #=============================================
@@ -90,21 +106,11 @@ class  PhaseDesign:
         self.phase_zemax= (2*np.pi)*np.array([i for i in self.phase_zemax])
         self.phase_zemax= self.phase_zemax- min(self.phase_zemax)
        
+        if (file_path is not None) and show_plot== True:
+            self._compare_optimized_ideal()
         return self.x_zemax, self.phase_zemax
-   
-    def compare_optimized_ideal(self):
-        phase_hyperbolic = -(2*np.pi/self.Wavelength)*(np.sqrt(self.x_zemax**2+self.FocalLength**2)-self.FocalLength) # Hyperbolic lens is assumed with mod 2pi phase target
-        phase_hyperbolic= phase_hyperbolic- min(phase_hyperbolic)
-
-
-        plt.scatter(self.x_zemax, self.phase_zemax, color= 'darkblue',label= 'Zemax Optimized Phase')
-        plt.plot(self.x_zemax, phase_hyperbolic,linestyle= '--',color='darkred', label= 'Ideal Hyperbolic Phase', linewidth= 2.0)
-        plt.ylabel('Phase (rad)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
-        plt.xlabel('Radius (μm)', fontdict={'size': 14, 'weight': 'bold', 'font': 'arial'})
-        #plt.ylim(0,2* np.pi)
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
+    
+    
 
 
 class  UnitCellDesign:
@@ -176,7 +182,11 @@ class  LensDesign:
         self.PillarIndex= LensConfig["PillarIndex"]
         self.LensRadius= self.LensDiameter/2 
 
-    def make_lens_geometry(self,radius_zemax, phase_zemax, radius_unitcell, phase_unitcell, idealphase= False, show_lens= False):
+    def make_lens_geometry(self, radius_unitcell, phase_unitcell ,radius_zemax = None , phase_zemax= None ,  idealphase= False, show_lens= False):
+        if idealphase== False and phase_zemax.all() == None:
+            error_m= "If  phase_zemax is not provided, set idealphase=True."
+            raise ValueError(error_m)
+
         self.radius_zemax= radius_zemax
         self.phase_zemax= phase_zemax
         self.radius_unitcell= radius_unitcell
