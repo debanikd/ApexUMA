@@ -408,13 +408,13 @@ class FullLensSim:
         # #==================================================
         # Add the source 
         # #==================================================
+        
         fdtd.addplane()
         fdtd.set("name", "source")
         fdtd.set("injection axis","z")
         fdtd.set("direction","forward")
         fdtd.set("x",0)
         fdtd.set("x span",(self.LensDiameter+ 2* self.PMLDistance) * self.um)
-
         fdtd.set("y",0)
         fdtd.set("y span", (self.LensDiameter+ 2* self.PMLDistance)* self.um)
 
